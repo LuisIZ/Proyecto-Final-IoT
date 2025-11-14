@@ -8,11 +8,13 @@
 \else
 \fi
 
-\usepackage{siunitx}
 \usepackage{listings}
 \usepackage{xcolor}
 \usepackage{tabularx}
 \usepackage{booktabs}
+\usepackage{tikz}
+
+\usetikzlibrary{arrows.meta,positioning}
 
 \definecolor{codegreen}{rgb}{0,0.6,0}
 \definecolor{codegray}{rgb}{0.5,0.5,0.5}
@@ -46,7 +48,7 @@
     linkcolor=blue,
     filecolor=magenta,      
     urlcolor=cyan,
-    pdftitle={Overleaf Example},
+    pdftitle={Proyecto Final IoT - Arenero inteligente con acceso selectivo - Grupo 4},
     pdfpagemode=FullScreen,
     }
 
@@ -143,26 +145,26 @@ La lista de componentes se ha definido considerando los requisitos funcionales d
         Servomotor (p.ej.\ MG90S) & Apertura y cierre de la compuerta del arenero & Ofrece control angular preciso y fuerza suficiente para mover una compuerta ligera, facilitando movimientos seguros y repetibles. \\
         Sensor de presencia (IR, ultrasonido o PIR) & Detección de presencia/ausencia en la entrada del arenero & Permite validar que el gato está cruzando la entrada y evitar cierres peligrosos. \\
         Sensor de fin de carrera & Detección de posición abierta/cerrada de la compuerta & Asegura que el sistema conozca el estado de la compuerta y pueda gestionar errores o atascos. \\
-        Fuente de alimentación (adaptador 5\,V y regulador) & Alimentación del ESP32 y del servomotor & Proporciona tensión y corriente adecuadas para el funcionamiento estable del sistema. \\
-        Elementos auxiliares & Protoboard o PCB, cables, resistencias, LEDs de estado, estructura mecánica del arenero & Facilitan el cableado, la señalización visual de estados y la integración física del sistema. \\
+        Buzzer activo & Generación de señales sonoras de aviso & Actúa como segundo actuador para indicar intentos de acceso no autorizados, errores de compuerta o estados de configuración. \\
+        LED de estado & Indicación visual de estado del sistema & Funciona como tercer actuador, permitiendo distinguir estados (acceso permitido, bloqueado o error) de forma intuitiva. \\
+        Fuente de alimentación (adaptador 5\,V y regulador) & Alimentación del ESP32 y de los actuadores & Proporciona tensión y corriente adecuadas para el funcionamiento estable del sistema. \\
+        Elementos auxiliares & Protoboard o PCB, cables, resistencias, estructura mecánica del arenero & Facilitan el cableado, la señalización y la integración física del sistema. \\
         \bottomrule
     \end{tabularx}
 \end{table*}
 
-En caso de ser necesario, se podrán añadir sensores adicionales (por ejemplo, un sensor de peso o de nivel de arena) para futuras extensiones relacionadas con el monitoreo de higiene, sin afectar el núcleo del sistema de acceso selectivo.
+De este modo, el proyecto cumple con el requisito del curso de incorporar al menos dos sensores (sensor de presencia y sensor de fin de carrera) y dos actuadores (servomotor y buzzer), añadiendo además un tercer actuador visual (LED de estado) para señalizar el funcionamiento del arenero.
 
 \subsection{Microcontrolador a usar}
 
 Para el control central del sistema se selecciona el módulo \textbf{ESP32 DevKit}, que integra en un solo dispositivo:
 
 \begin{itemize}
-    \item Núcleo de procesamiento con capacidad suficiente para ejecutar la lógica de detección BLE, filtrado de RSSI y control de actuadores en tiempo (casi) real.
+    \item Núcleo de procesamiento con capacidad suficiente para ejecutar la lógica de detección BLE, filtrado de RSSI y control de actuadores en tiempo real.
     \item Módulo \textbf{Bluetooth Low Energy} integrado, necesario para escanear los \emph{beacons} emitidos por el collar del gato autorizado sin requerir hardware adicional.
     \item Conectividad \textbf{WiFi}, que permite, en una fase posterior, incorporar funciones IoT como registro en la nube o paneles de monitoreo.
-    \item Número adecuado de pines GPIO para controlar el servomotor, leer sensores de presencia y fin de carrera, y añadir indicadores (LEDs) de estado.
+    \item Número adecuado de pines GPIO para controlar el servomotor, el buzzer y el LED de estado, así como leer los sensores de presencia y fin de carrera.
 \end{itemize}
-
-Inicialmente se consideró el uso de una plataforma Arduino Mega como posible controlador adicional, debido a su número de pines y familiaridad en contextos educativos. Sin embargo, dado que el ESP32 cubre tanto las necesidades de procesamiento como de comunicación (BLE y WiFi), se opta por simplificar la arquitectura y utilizarlo como microcontrolador único. Esta decisión está alineada con los objetivos de mantener el coste bajo, reducir la complejidad del sistema y asegurar la reproducibilidad del proyecto.
 
 \subsection{Diagrama de bloques del sistema propuesto}
 
@@ -171,10 +173,10 @@ El sistema propuesto se organiza de acuerdo con la arquitectura IoT en capas des
 \begin{itemize}
     \item \textbf{Capa de percepción:}
     \begin{itemize}
-        \item Collar con beacon BLE que emite paquetes de advertising con un identificador único asociado al gato autorizado.
+        \item Collar con beacon BLE que emite paquetes de \emph{advertising} con un identificador único asociado al gato autorizado.
         \item Sensor de presencia en la entrada del arenero, empleado para detectar el paso del gato.
         \item Sensor de fin de carrera que indica la posición de la compuerta (abierta o cerrada).
-        \item Servomotor responsable del movimiento de la compuerta.
+        \item Actuadores: servomotor responsable del movimiento de la compuerta, buzzer activo para avisos sonoros y LED de estado para indicación visual.
     \end{itemize}
 
     \item \textbf{Capa de procesamiento (nodo embebido):}
@@ -183,7 +185,7 @@ El sistema propuesto se organiza de acuerdo con la arquitectura IoT en capas des
         \begin{itemize}
             \item Escanea dispositivos BLE cercanos, filtra por el identificador del collar autorizado y estima la proximidad mediante RSSI.
             \item Ejecuta la lógica de decisión (abrir compuerta sólo si el gato autorizado está suficientemente cerca y las condiciones de seguridad se cumplen).
-            \item Controla el servomotor y lee el estado de los sensores de presencia y fin de carrera.
+            \item Controla el servomotor, el buzzer y el LED de estado, y lee el estado de los sensores de presencia y fin de carrera.
         \end{itemize}
     \end{itemize}
 
@@ -194,8 +196,57 @@ El sistema propuesto se organiza de acuerdo con la arquitectura IoT en capas des
     \end{itemize}
 \end{itemize}
 
-En el informe completo, este diagrama se representará gráficamente como una figura, enfatizando las conexiones entre el collar BLE, el ESP32, los sensores y el servomotor. La implementación seguirá una secuencia de pruebas incrementales: primero se validará la detección BLE y el filtrado por ID, luego el control del servomotor y sensores de seguridad, y finalmente la integración con la estructura física del arenero.
+\begin{figure}[!t]
+    \centering
+    \resizebox{\columnwidth}{!}{%
+    \begin{tikzpicture}[
+        font=\footnotesize,
+        node distance=0.9cm and 1.4cm,
+        block/.style={draw, rounded corners, align=center, minimum width=2.6cm, minimum height=0.9cm},
+        smallblock/.style={draw, rounded corners, align=center, minimum width=2.2cm, minimum height=0.8cm},
+        sensor/.style={draw, dashed, rounded corners, align=center, minimum width=2.2cm, minimum height=0.8cm},
+        line/.style={-Latex}
+    ]
 
+    % COLLAR BLE 
+    \node[smallblock] (collar) {Collar con\\ beacon BLE};
+
+    % ESP32 
+    \node[block, right=of collar] (esp32) {ESP32 DevKit\\
+        \scriptsize Escaneo BLE, lógica de decisión\\ y control de actuadores};
+
+    % ACTUADORES 
+    \node[smallblock, right=of esp32, yshift=0.8cm] (servo) {Compuerta\\ (servomotor)};
+    \node[smallblock, right=of esp32] (led) {LED de\\ estado};
+    \node[smallblock, right=of esp32, yshift=-0.8cm] (buzzer) {Buzzer};
+
+    % SENSORES 
+    \node[sensor, below=1.1cm of esp32, xshift=-1.4cm] (presencia) {Sensor de\\ presencia};
+    \node[sensor, below=1.1cm of esp32, xshift=1.4cm] (limit) {Sensor de fin\\ de carrera};
+
+    % WIFI / INTERFAZ 
+    \node[block, above=1.2cm of esp32] (wifi) {Red WiFi /\\ Interfaz de usuario\\ (opcional)};
+
+    % CONEXIONES PRINCIPALES
+    \draw[line] (collar) -- node[above]{ID / RSSI} (esp32);
+
+    % Salidas a actuadores
+    \draw[line] (esp32) -- (servo);
+    \draw[line] (esp32) -- (led);
+    \draw[line] (esp32) -- (buzzer);
+
+    % Entradas de sensores
+    \draw[line] (presencia.north) -- (esp32.south -| presencia.north);
+    \draw[line] (limit.north) -- (esp32.south -| limit.north);
+
+    % Conexión WiFi / interfaz
+    \draw[line] (wifi.south) -- (esp32.north);
+
+    \end{tikzpicture}%
+    }
+    \caption{Diagrama de bloques del sistema propuesto para el arenero inteligente con acceso selectivo.}
+    \label{fig:diagrama_bloques}
+\end{figure}
 
 \section{Objetivos y Alcances}
 
@@ -212,7 +263,7 @@ Diseñar e implementar un prototipo de arenero inteligente con acceso selectivo 
     \begin{itemize}
         \item Escanear dispositivos BLE cercanos y filtrar el identificador correspondiente al collar autorizado.
         \item Estimar la proximidad mediante RSSI y definir umbrales para la activación de la compuerta.
-        \item Gestionar el control del servomotor y la lectura de sensores de presencia y fin de carrera.
+        \item Gestionar el control del servomotor, del buzzer y del LED de estado, así como la lectura de los sensores de presencia y fin de carrera.
     \end{itemize}
     \item Integrar los componentes electrónicos con la estructura física del arenero, implementando un mecanismo de compuerta que se abra únicamente cuando el gato autorizado se aproxima y se cierre de forma segura una vez completado el ingreso/salida.
     \item Realizar pruebas funcionales en un entorno controlado, evaluando la tasa de detección correcta del gato autorizado, la respuesta del sistema ante otros dispositivos BLE y el comportamiento mecánico de la compuerta.
