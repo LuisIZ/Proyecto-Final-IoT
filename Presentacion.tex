@@ -1,0 +1,371 @@
+\documentclass{beamer}
+
+\usetheme{Madrid}
+\usecolortheme{default}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{siunitx}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning}
+
+\title[Arenero inteligente IoT]{Proyecto IoT: Arenero inteligente con acceso selectivo}
+\author[Grupo 4]{Luis Izaguirre \and Harold Canto \and Joel Jiménez \and Hans Mendoza}
+\institute[UTEC]{CS5055 -- Internet of Things}
+\date{Semana 13 -- Perfil de proyecto}
+
+\begin{document}
+
+%------------------------------------------------
+\begin{frame}
+    \titlepage
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}{Agenda}
+    \tableofcontents
+\end{frame}
+
+%------------------------------------------------
+\section{Introducción y problemática}
+
+\begin{frame}{Motivación del proyecto}
+    \begin{itemize}
+        \item Hogares con varios gatos $\Rightarrow$ compartir arenero genera:
+        \begin{itemize}
+            \item Estrés y conflictos de territorialidad.
+            \item Dificultad para monitorear la salud de cada gato.
+            \item Problemas de higiene y limpieza.
+        \end{itemize}
+        \item Areneros automáticos comerciales:
+        \begin{itemize}
+            \item Se enfocan en autolimpieza o monitoreo básico.
+            \item No controlan qué gato accede a qué arenero.
+        \end{itemize}
+        \item Oportunidad: usar IoT para controlar el acceso a recursos de forma individual.
+    \end{itemize}
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}{Problema técnico}
+    \textbf{¿Cómo permitir que solo un gato autorizado use un arenero específico?}
+    \vspace{0.3cm}
+    \begin{itemize}
+        \item Identificar de forma fiable al gato mediante un \textbf{collar BLE}.
+        \item Detectar su \textbf{proximidad} al arenero a partir del \textbf{RSSI}.
+        \item Accionar una \textbf{compuerta motorizada} que:
+        \begin{itemize}
+            \item Se abra solo cuando el gato autorizado está cerca.
+            \item Se cierre de forma segura, evitando atrapamientos.
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+%------------------------------------------------
+\section{Marco teórico y Estado del arte}
+
+\begin{frame}{Marco teórico: conceptos clave}
+    \begin{itemize}
+        \item \textbf{IoT y arquitectura en capas}
+        \begin{itemize}
+            \item Percepción: sensores, actuadores (servomotor, buzzer, LED).
+            \item Procesamiento: ESP32 (lógica de decisión).
+            \item Red / Aplicación: BLE y WiFi para monitoreo.
+        \end{itemize}
+        \item \textbf{BLE y RSSI}
+        \begin{itemize}
+            \item BLE: comunicación de corto alcance y bajo consumo.
+            \item RSSI: indicador para estimar proximidad del collar al arenero.
+        \end{itemize}
+        \item \textbf{Wearables e identificación electrónica}
+        \begin{itemize}
+            \item Collares electrónicos para animales (peso, autonomía, comodidad).
+            \item Tecnologías RFID vs BLE para identificar individuos.
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}{Estado del arte: wearables y BLE}
+    \begin{itemize}
+        \item \textbf{Fonseca et al. (2023)}:
+        \begin{itemize}
+            \item Collar para ovinos con sensores inerciales y de temperatura.
+            \item Destacan minimizar peso y número de sensores.
+        \end{itemize}
+        \item \textbf{Walker et al. (2024)}:
+        \begin{itemize}
+            \item Dispositivo BLE para proximidad y localización en ovejas.
+            \item Analizan relación RSSI--distancia $\Rightarrow$ base para nuestro umbral de apertura.
+        \end{itemize}
+        \item \textbf{Farine et al. (2024)}:
+        \begin{itemize}
+            \item Balizas BLE de bajo costo/peso con gran autonomía.
+            \item Proveen parámetros para diseñar el collar BLE (intervalo de advertising, tamaño).
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}{Estado del arte: control selectivo y areneros}
+    \begin{itemize}
+        \item \textbf{Wild et al. (2023)}:
+        \begin{itemize}
+            \item Dispositivo selectivo con puertas activadas por tags RFID.
+            \item Patrón: identidad en el collar $\Rightarrow$ puerta controla acceso.
+        \end{itemize}
+        \item \textbf{Brianbojoyou et al. (2023)}:
+        \begin{itemize}
+            \item Comedero automático con lector RFID y servomotor.
+        \end{itemize}
+        \item \textbf{Zainal \& Chua (2023); Seema et al. (2025)}:
+        \begin{itemize}
+            \item Areneros automáticos con ESP32, sensores PIR/ultrasónico y notificaciones.
+            \item Validan la viabilidad de integrar microcontroladores, sensores y actuadores en areneros.
+        \end{itemize}
+        \item \textbf{Gendy et al. (2023)}:
+        \begin{itemize}
+            \item Comparan BLE vs RFID en entornos IoT.
+            \item BLE resulta adecuado cuando se usa ESP32 y se requiere flexibilidad indoor.
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+%------------------------------------------------
+\section{Metodología y diseño}
+
+\begin{frame}{Metodología general}
+    \begin{enumerate}
+        \item \textbf{Definición de arquitectura y componentes}
+        \begin{itemize}
+            \item Selección de ESP32, collar BLE, sensores y actuadores.
+        \end{itemize}
+        \item \textbf{Desarrollo de firmware}
+        \begin{itemize}
+            \item Escaneo BLE, filtrado por ID del collar, cálculo de RSSI.
+            \item Lógica de decisión para apertura/cierre de compuerta.
+        \end{itemize}
+        \item \textbf{Integración física y pruebas}
+        \begin{itemize}
+            \item Montaje en estructura del arenero.
+            \item Pruebas funcionales en entorno controlado.
+        \end{itemize}
+    \end{enumerate}
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}{Lista de componentes principales}
+    \begin{itemize}
+        \item \textbf{ESP32 DevKit}: microcontrolador principal, BLE y WiFi integrados.
+        \item \textbf{Collar con beacon BLE}: emite ID único del gato autorizado.
+        \item \textbf{Sensores}:
+        \begin{itemize}
+            \item Sensor de presencia (IR / ultrasonido / PIR).
+            \item Sensor de fin de carrera en la compuerta.
+        \end{itemize}
+        \item \textbf{Actuadores}:
+        \begin{itemize}
+            \item Servomotor para la compuerta.
+            \item Buzzer para avisos sonoros.
+            \item LED de estado como indicador visual.
+        \end{itemize}
+        \item Fuente de alimentación, protoboard/PCB y estructura mecánica del arenero.
+    \end{itemize}
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}{Microcontrolador y lógica principal}
+    \begin{itemize}
+        \item \textbf{ESP32 DevKit} seleccionado por:
+        \begin{itemize}
+            \item Núcleo de procesamiento suficiente para lógica en tiempo real.
+            \item BLE integrado para escanear el collar sin hardware extra.
+            \item WiFi opcional para registros y monitoreo futuro.
+            \item GPIO suficientes para sensores y actuadores.
+        \end{itemize}
+        \item Lógica central:
+        \begin{itemize}
+            \item Escanea beacons BLE, filtra por ID del collar.
+            \item Estima proximidad con RSSI.
+            \item Si el gato autorizado está cerca y es seguro:
+            \begin{itemize}
+                \item Abre compuerta (servomotor), enciende LED, opcionalmente activa buzzer.
+            \end{itemize}
+            \item Cierra compuerta cuando el gato ha entrado/salido.
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}{Diagrama de bloques del sistema}
+    \begin{figure}
+        \centering
+        \resizebox{0.9\textwidth}{!}{%
+        \begin{tikzpicture}[
+            font=\scriptsize,
+            node distance=0.9cm and 1.4cm,
+            block/.style={draw, rounded corners, align=center,
+                          minimum width=2.6cm, minimum height=0.9cm},
+            smallblock/.style={draw, rounded corners, align=center,
+                               minimum width=2.2cm, minimum height=0.8cm},
+            sensor/.style={draw, dashed, rounded corners, align=center,
+                           minimum width=2.2cm, minimum height=0.8cm},
+            line/.style={-Latex}
+        ]
+
+        % COLLAR BLE (izquierda)
+        \node[smallblock] (collar) {Collar con\\ beacon BLE};
+
+        % ESP32 (centro)
+        \node[block, right=of collar] (esp32) {ESP32 DevKit\\
+            Escaneo BLE, lógica de decisión\\ y control de actuadores};
+
+        % ACTUADORES (derecha)
+        \node[smallblock, right=of esp32, yshift=0.8cm] (servo) {Compuerta\\ (servomotor)};
+        \node[smallblock, right=of esp32] (led) {LED de\\ estado};
+        \node[smallblock, right=of esp32, yshift=-0.8cm] (buzzer) {Buzzer};
+
+        % SENSORES (abajo)
+        \node[sensor, below=1.1cm of esp32, xshift=-1.4cm] (presencia) {Sensor de\\ presencia};
+        \node[sensor, below=1.1cm of esp32, xshift=1.4cm] (limit) {Sensor de fin\\ de carrera};
+
+        % WIFI / INTERFAZ (arriba)
+        \node[block, above=1.2cm of esp32] (wifi) {Red WiFi /\\ Interfaz de usuario\\ (opcional)};
+
+        % CONEXIONES
+        \draw[line] (collar) -- node[above]{ID / RSSI} (esp32);
+        \draw[line] (esp32) -- (servo);
+        \draw[line] (esp32) -- (led);
+        \draw[line] (esp32) -- (buzzer);
+        \draw[line] (presencia.north) -- (esp32.south -| presencia.north);
+        \draw[line] (limit.north) -- (esp32.south -| limit.north);
+        \draw[line] (wifi.south) -- (esp32.north);
+
+        \end{tikzpicture}%
+        }
+        \caption{Diagrama de bloques del sistema propuesto.}
+    \end{figure}
+\end{frame}
+
+%------------------------------------------------
+\section{Objetivos y alcances}
+
+\begin{frame}{Objetivo general}
+    \begin{block}{}
+        Diseñar e implementar un prototipo de arenero inteligente con acceso selectivo que,
+        mediante un collar basado en BLE y un microcontrolador ESP32, permita el ingreso
+        únicamente de un gato autorizado, controlando de manera segura la apertura y cierre de una compuerta.
+    \end{block}
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}{Objetivos específicos}
+    \begin{itemize}
+        \item Analizar tecnologías de identificación (BLE vs RFID) y justificar la elección de BLE.
+        \item Diseñar el collar con beacon BLE (peso, autonomía, fijación).
+        \item Desarrollar el firmware del ESP32 para:
+        \begin{itemize}
+            \item Escaneo BLE y filtrado por ID del collar.
+            \item Estimación de proximidad con RSSI y definición de umbrales.
+            \item Control de servomotor, buzzer y LED, lectura de sensores.
+        \end{itemize}
+        \item Integrar electrónica y estructura del arenero con compuerta motorizada.
+        \item Realizar pruebas funcionales en entorno controlado.
+        \item Documentar arquitectura, decisiones de diseño y limitaciones.
+    \end{itemize}
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}{Alcances y limitaciones}
+    \textbf{Alcances}
+    \begin{itemize}
+        \item Un arenero con una sola compuerta motorizada controlada por ESP32.
+        \item Un único gato autorizado (un collar BLE).
+        \item Sensores básicos de seguridad y monitoreo mínimo por serie/WiFi.
+    \end{itemize}
+    \vspace{0.2cm}
+    \textbf{Limitaciones}
+    \begin{itemize}
+        \item No se implementa autolimpieza ni gestión multi-gato en esta fase.
+        \item Prototipo de prueba de concepto (sin certificaciones comerciales).
+        \item Pruebas en entorno controlado, sin evaluación a largo plazo.
+    \end{itemize}
+\end{frame}
+
+%------------------------------------------------
+\section{Cierre}
+
+\begin{frame}{Conclusiones parciales y siguientes pasos}
+    \begin{itemize}
+        \item El problema de acceso selectivo a areneros es relevante para el bienestar de gatos en hogares multi-gato.
+        \item El análisis del estado del arte respalda el uso de \textbf{collares BLE} y de un \textbf{ESP32} como nodo central.
+        \item Se ha definido una arquitectura IoT coherente con los requisitos del curso (sensores, actuadores, comunicación inalámbrica).
+        \item \textbf{Siguientes pasos}:
+        \begin{itemize}
+            \item Implementar y probar el firmware de detección BLE y lógica de compuerta.
+            \item Integrar la parte mecánica del arenero y la interfaz de monitoreo.
+            \item Medir métricas de desempeño (tasa de detección correcta, falsos positivos, tiempos de apertura).
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+%------------------------------------------------
+
+\begin{frame}[allowframebreaks]{Referencias}
+\small
+\begin{thebibliography}{8}
+
+\bibitem{walker2024ble}
+A.~M. Walker, N.~N. Jonsson, A.~Waterhouse \emph{et al.}, 
+``Development of a novel Bluetooth Low Energy device for proximity and location monitoring in grazing sheep,''
+\emph{Animal}, vol.~18, p.~101276, 2024.
+
+\bibitem{fonseca2023wearable}
+L.~Fonseca, D.~Corujo, W.~Xavier, and P.~Gonçalves,
+``On the Development of a Wearable Animal Monitor,''
+\emph{Animals}, vol.~13, no.~1, p.~120, 2023.
+
+\bibitem{wild2023selective}
+S.~Wild, G.~Alarcón-Nieto, M.~Chimento, and L.~M. Aplin,
+``Manipulating actions: A selective two-option device for cognitive experiments in wild animals,''
+\emph{Journal of Animal Ecology}, vol.~92, no.~8, pp.~1509--1519, 2023.
+
+\bibitem{farine2024blebeacons}
+D.~R. Farine, J.~Penndorf, S.~Bolcato, B.~Nyaguthii, and L.~M. Aplin,
+``Low-cost animal tracking using Bluetooth low energy beacons on a crowd-sourced network,''
+\emph{Methods in Ecology and Evolution}, vol.~15, no.~12, pp.~2247--2261, 2024.
+
+\bibitem{gendy2023blevsrfid}
+M.~E.~G. Gendy, P.~Tham, F.~Harrison, and M.~R. Yuce,
+``Comparing Efficiency and Performance of IoT BLE and RFID-Based Systems for Achieving Contact Tracing to Monitor Infection Spread among Hospital and Office Staff,''
+\emph{Sensors}, vol.~23, no.~3, p.~1397, 2023.
+
+\bibitem{brian2023petfeeder}
+J.~Brianbojoyou, A.~Ashivin, V.~Abilash, and V.~M. Bhaskaran,
+``Automated Pet Feeder with RFID Technology using Design Thinking Approach,''
+\emph{International Journal for Research in Applied Science \& Engineering Technology (IJRASET)}, 
+vol.~11, no.~11, pp.~1090--1096, 2023.
+
+\bibitem{zainal2023litterbox}
+M.~H. Zainal and K.~L. Chua,
+``Development of Automatic Litter Box Using ESP32,''
+\emph{Evolution in Electrical and Electronic Engineering}, vol.~4, no.~2, pp.~529--536, 2023.
+
+\bibitem{seema2025littertray}
+M.~Seema, M.~Prince, J.~P. P.~M., and A.~Sumithra,
+``An IoT-Enabled System for Monitoring and Alerting Cat Litter Tray Cleaning Based on Fill-Level Detection,''
+\emph{International Journal of Environmental Sciences}, vol.~11, no.~22s, pp.~5107--5114, 2025.
+
+\end{thebibliography}
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}
+    \centering
+    \Huge ¿Preguntas?
+\end{frame}
+
+%------------------------------------------------
+\end{document}
